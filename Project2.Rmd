@@ -1,0 +1,38 @@
+install.packages("fANCOVA")
+library("fANCOVA")
+library("glmnet")
+
+trainset1 = read.table("/Users/FrancisLin/Desktop/Machine Learning/Project/train.csv", header = TRUE, sep = ",")
+
+fullrow = rep(FALSE, nrow(trainset1))
+for (i in 1:nrow(trainset1))
+{
+  fullrow[i] = !any(is.na(trainset1[i,29:147]))
+}
+
+tempframe1 <-trainset1[fullrow, 29:147]
+tempframe1$Ret_PlusOne = trainset1[fullrow, grep("Ret_PlusOne", colnames(trainset1))]
+
+newframe = data.frame()
+
+for (i in 1:119) {
+  local = loess.as(tempframe1[,i], tempframe1$Ret_PlusOne, criterion = "gcv")
+  newcol = data.frame(local$fitted)
+  names(newcol) = paste("NewRet_", (i+1), sep = "")
+  newframe = data.frame(c(newframe, newcol))
+}
+
+newframe$Ret_PlusOne = trainset1[fullrow, grep("Ret_PlusOne", colnames(trainset1))]
+
+# Use Lasso to pick new prdictor
+netout = glmnet(as.matrix(newframe[,-ncol(newframe)]), as.matrix(newframe[,ncol(newframe)]))
+print(netout)
+
+cvgout = cv.glmnet(as.matrix(newframe[,-ncol(newframe)]), as.matrix(newframe[,ncol(newframe)]))
+
+plot(cvgout)
+
+print(cvgout$lambda.1se)
+
+optimalposition = which(cvgout$glmnet.fit$lambda == cvgout$lambda.1se)
+netout$beta[netout$beta[,optimalposition] != 0, optimalposition]

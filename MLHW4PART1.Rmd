@@ -1,0 +1,26 @@
+load("retmat.Robj")
+
+library(quantmod)
+
+stockdata = getSymbols("MSFT", auto.assign=FALSE, from="2016-1-1", to="2016-12-31")
+msft = dailyReturn(stockdata[,6])
+
+# Analysis
+
+# 1. 
+library("glmnet")
+
+glmnetout = glmnet(as.matrix(retmat), as.matrix(msft))
+
+print(glmnetout)
+
+# 2. 
+out = cv.glmnet(as.matrix(retmat), as.matrix(msft), nfolds = 5)
+
+plot(out)
+
+print(out$lambda.1se)
+
+# 3. 
+optlambdapos = which(out$glmnet.fit$lambda == out$lambda.1se)
+glmnetout$beta[glmnetout$beta[,optlambdapos] != 0, optlambdapos]
